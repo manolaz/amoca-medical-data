@@ -37,39 +37,39 @@ pub mod share_medical_records {
         let mut data = ctx.accounts.patient_data.load_init()?;
 
         // Basic demographics
-        data.patient_id = ciphertexts[0];
-        data.age = ciphertexts[1];
-        data.gender = ciphertexts[2];
-        data.blood_type = ciphertexts[3];
-        data.weight = ciphertexts[4];
-        data.height = ciphertexts[5];
-        for i in 0..5 { data.allergies[i] = ciphertexts[6 + i]; }
+        data.demographics.patient_id = ciphertexts[0];
+        data.demographics.age = ciphertexts[1];
+        data.demographics.gender = ciphertexts[2];
+        data.demographics.blood_type = ciphertexts[3];
+        data.demographics.weight = ciphertexts[4];
+        data.demographics.height = ciphertexts[5];
+        for i in 0..5 { data.demographics.allergies[i] = ciphertexts[6 + i]; }
 
         // Advanced healthcare
-        for i in 0..10 { data.medical_history[i] = ciphertexts[11 + i]; }
-        data.medication_count = ciphertexts[21];
-        for i in 0..8 { data.medications[i] = ciphertexts[22 + i]; }
-        data.procedure_count = ciphertexts[30];
-        for i in 0..8 { data.procedure_dates[i] = ciphertexts[31 + i]; }
-        for i in 0..5 { data.family_history[i] = ciphertexts[39 + i]; }
+        for i in 0..10 { data.healthcare.medical_history[i] = ciphertexts[11 + i]; }
+        data.healthcare.medication_count = ciphertexts[21];
+        for i in 0..8 { data.healthcare.medications[i] = ciphertexts[22 + i]; }
+        data.healthcare.procedure_count = ciphertexts[30];
+        for i in 0..8 { data.healthcare.procedure_dates[i] = ciphertexts[31 + i]; }
+        for i in 0..5 { data.healthcare.family_history[i] = ciphertexts[39 + i]; }
 
         // Genomic analysis
-        data.variant_count = ciphertexts[44];
-        for i in 0..15 { data.genetic_markers[i] = ciphertexts[45 + i]; }
-        for i in 0..15 { data.variant_significance[i] = ciphertexts[60 + i]; }
-        for i in 0..5 { data.carrier_status[i] = ciphertexts[75 + i]; }
-        for i in 0..3 { data.pharmacogenomic_markers[i] = ciphertexts[80 + i]; }
-        for i in 0..7 { data.ancestry_components[i] = ciphertexts[83 + i]; }
+        data.genomic.variant_count = ciphertexts[44];
+        for i in 0..15 { data.genomic.genetic_markers[i] = ciphertexts[45 + i]; }
+        for i in 0..15 { data.genomic.variant_significance[i] = ciphertexts[60 + i]; }
+        for i in 0..5 { data.genomic.carrier_status[i] = ciphertexts[75 + i]; }
+        for i in 0..3 { data.genomic.pharmacogenomic_markers[i] = ciphertexts[80 + i]; }
+        for i in 0..7 { data.genomic.ancestry_components[i] = ciphertexts[83 + i]; }
 
         // Lab test results
-        data.lab_test_count = ciphertexts[90];
-        for i in 0..10 { data.lab_test_types[i] = ciphertexts[91 + i]; }
-        for i in 0..10 { data.lab_test_dates[i] = ciphertexts[101 + i]; }
-        for i in 0..10 { data.lab_test_values[i] = ciphertexts[111 + i]; }
-        for i in 0..10 { data.lab_test_flags[i] = ciphertexts[121 + i]; }
-        data.imaging_count = ciphertexts[131];
-        for i in 0..10 { data.imaging_types[i] = ciphertexts[132 + i]; }
-        for i in 0..10 { data.imaging_dates[i] = ciphertexts[142 + i]; }
+        data.lab_tests.lab_test_count = ciphertexts[90];
+        for i in 0..10 { data.lab_tests.lab_test_types[i] = ciphertexts[91 + i]; }
+        for i in 0..10 { data.lab_tests.lab_test_dates[i] = ciphertexts[101 + i]; }
+        for i in 0..10 { data.lab_tests.lab_test_values[i] = ciphertexts[111 + i]; }
+        for i in 0..10 { data.lab_tests.lab_test_flags[i] = ciphertexts[121 + i]; }
+        data.lab_tests.imaging_count = ciphertexts[131];
+        for i in 0..10 { data.lab_tests.imaging_types[i] = ciphertexts[132 + i]; }
+        for i in 0..10 { data.lab_tests.imaging_dates[i] = ciphertexts[142 + i]; }
 
         Ok(())
     }
@@ -419,12 +419,9 @@ pub struct ReceivedLabTestDataEvent {
     pub imaging_dates: [[u8; 32]; 10],
 }
 
-/// Stores encrypted patient medical information including advanced healthcare,
-/// genomic analysis, and lab test results.
-#[account(zero_copy)]
+/// Basic patient demographics information
 #[repr(C)]
-pub struct PatientData {
-    // Basic demographics
+pub struct BasicDemographics {
     /// Encrypted unique patient identifier
     pub patient_id: [u8; 32],
     /// Encrypted patient age
@@ -439,7 +436,11 @@ pub struct PatientData {
     pub height: [u8; 32],
     /// Array of encrypted allergy information (up to 5 allergies)
     pub allergies: [[u8; 32]; 5],
-    // Advanced healthcare
+}
+
+/// Advanced healthcare data including medical history, medications, procedures, and family history
+#[repr(C)]
+pub struct HealthcareData {
     /// Encrypted medical history flags (diabetes, hypertension, heart_disease, cancer, stroke, asthma, copd, arthritis, osteoporosis, depression)
     pub medical_history: [[u8; 32]; 10],
     /// Encrypted medication count
@@ -452,7 +453,11 @@ pub struct PatientData {
     pub procedure_dates: [[u8; 32]; 8],
     /// Encrypted family history flags (diabetes, heart_disease, cancer, stroke, hypertension)
     pub family_history: [[u8; 32]; 5],
-    // Genomic analysis
+}
+
+/// Genomic analysis data including genetic variants, markers, carrier status, and ancestry
+#[repr(C)]
+pub struct GenomicData {
     /// Encrypted genetic variant count
     pub variant_count: [u8; 32],
     /// Array of encrypted genetic marker identifiers (up to 15 variants)
@@ -465,7 +470,11 @@ pub struct PatientData {
     pub pharmacogenomic_markers: [[u8; 32]; 3],
     /// Array of encrypted ancestry component percentages (up to 7 populations)
     pub ancestry_components: [[u8; 32]; 7],
-    // Lab test results
+}
+
+/// Lab test results and imaging data
+#[repr(C)]
+pub struct LabTestData {
     /// Encrypted lab test count
     pub lab_test_count: [u8; 32],
     /// Array of encrypted lab test type identifiers (up to 10 tests)
@@ -482,6 +491,17 @@ pub struct PatientData {
     pub imaging_types: [[u8; 32]; 10],
     /// Array of encrypted imaging dates (days since epoch, up to 10)
     pub imaging_dates: [[u8; 32]; 10],
+}
+
+/// Stores encrypted patient medical information including advanced healthcare,
+/// genomic analysis, and lab test results.
+#[account(zero_copy)]
+#[repr(C)]
+pub struct PatientData {
+    pub demographics: BasicDemographics,
+    pub healthcare: HealthcareData,
+    pub genomic: GenomicData,
+    pub lab_tests: LabTestData,
 }
 
 #[error_code]

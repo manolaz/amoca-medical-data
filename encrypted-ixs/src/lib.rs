@@ -4,8 +4,8 @@ use arcis_imports::*;
 mod circuits {
     use arcis_imports::*;
 
-    pub struct PatientData {
-        // Basic demographics
+    /// Basic patient demographics information
+    pub struct BasicDemographics {
         pub patient_id: u64,
         pub age: u8,
         pub gender: bool,
@@ -13,8 +13,10 @@ mod circuits {
         pub weight: u16,
         pub height: u16,
         pub allergies: [bool; 5],
-        
-        // Advanced Healthcare Data
+    }
+
+    /// Advanced healthcare data including medical history, medications, procedures, and family history
+    pub struct HealthcareData {
         // Medical history: [diabetes, hypertension, heart_disease, cancer, stroke, asthma, copd, arthritis, osteoporosis, depression]
         pub medical_history: [bool; 10],
         // Current medications count (up to 8 medications tracked)
@@ -27,8 +29,10 @@ mod circuits {
         pub procedure_dates: [u32; 8],
         // Family history: [diabetes, heart_disease, cancer, stroke, hypertension]
         pub family_history: [bool; 5],
-        
-        // Genomic Analysis Data
+    }
+
+    /// Genomic analysis data including genetic variants, markers, carrier status, and ancestry
+    pub struct GenomicData {
         // Genetic variant count (SNPs and variants)
         pub variant_count: u16,
         // Genetic markers (represented as u64 identifiers, up to 15 variants)
@@ -41,8 +45,10 @@ mod circuits {
         pub pharmacogenomic_markers: [bool; 3],
         // Ancestry components (percentages 0-100, up to 7 populations)
         pub ancestry_components: [u8; 7],
-        
-        // Lab Test Results
+    }
+
+    /// Lab test results and imaging data
+    pub struct LabTestData {
         // Lab test count
         pub lab_test_count: u8,
         // Test types: [cbc, lipid_panel, metabolic_panel, liver_function, kidney_function, thyroid, hba1c, psa]
@@ -59,6 +65,14 @@ mod circuits {
         pub imaging_types: [u8; 10],
         // Imaging dates (days since epoch, up to 10)
         pub imaging_dates: [u32; 10],
+    }
+
+    /// Complete patient data composed of modular components
+    pub struct PatientData {
+        pub demographics: BasicDemographics,
+        pub healthcare: HealthcareData,
+        pub genomic: GenomicData,
+        pub lab_tests: LabTestData,
     }
 
     #[instruction]
