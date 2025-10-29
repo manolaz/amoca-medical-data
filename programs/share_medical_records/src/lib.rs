@@ -1,5 +1,6 @@
 use anchor_lang::prelude::*;
 use arcium_anchor::prelude::*;
+use bytemuck::{Pod, Zeroable};
 
 const COMP_DEF_OFFSET_SHARE_PATIENT_DATA: u32 = comp_def_offset("share_patient_data");
 
@@ -34,7 +35,7 @@ pub mod share_medical_records {
             return Err(ErrorCode::InvalidInputLength.into());
         }
 
-        let mut data = ctx.accounts.patient_data.load_init()?;
+        let data = &mut ctx.accounts.patient_data;
 
         // Basic demographics
         data.demographics.patient_id = ciphertexts[0];
@@ -216,7 +217,7 @@ pub struct StorePatientData<'info> {
         seeds = [b"patient_data", payer.key().as_ref()],
         bump,
     )]
-    pub patient_data: AccountLoader<'info, PatientData>,
+    pub patient_data: Account<'info, PatientData>,
 }
 
 #[queue_computation_accounts("share_patient_data", payer)]
@@ -276,7 +277,7 @@ pub struct SharePatientData<'info> {
     pub clock_account: Account<'info, ClockAccount>,
     pub system_program: Program<'info, System>,
     pub arcium_program: Program<'info, Arcium>,
-    pub patient_data: AccountLoader<'info, PatientData>,
+    pub patient_data: Account<'info, PatientData>,
 }
 
 #[queue_computation_accounts("share_patient_data", payer)]
@@ -336,7 +337,7 @@ pub struct SharePatientDataWithRole<'info> {
     pub clock_account: Account<'info, ClockAccount>,
     pub system_program: Program<'info, System>,
     pub arcium_program: Program<'info, Arcium>,
-    pub patient_data: AccountLoader<'info, PatientData>,
+    pub patient_data: Account<'info, PatientData>,
 
     // Credential NFT accounts
     pub credential_mint: Account<'info, anchor_spl::token::Mint>,
@@ -421,6 +422,7 @@ pub struct ReceivedLabTestDataEvent {
 
 /// Basic patient demographics information
 #[repr(C)]
+#[derive(Copy, Clone, Pod, Zeroable, AnchorSerialize, AnchorDeserialize)]
 pub struct BasicDemographics {
     /// Encrypted unique patient identifier
     pub patient_id: [u8; 32],
@@ -440,6 +442,7 @@ pub struct BasicDemographics {
 
 /// Advanced healthcare data including medical history, medications, procedures, and family history
 #[repr(C)]
+#[derive(Copy, Clone, Pod, Zeroable, AnchorSerialize, AnchorDeserialize)]
 pub struct HealthcareData {
     /// Encrypted medical history flags (diabetes, hypertension, heart_disease, cancer, stroke, asthma, copd, arthritis, osteoporosis, depression)
     pub medical_history: [[u8; 32]; 10],
@@ -457,6 +460,7 @@ pub struct HealthcareData {
 
 /// Genomic analysis data including genetic variants, markers, carrier status, and ancestry
 #[repr(C)]
+#[derive(Copy, Clone, Pod, Zeroable, AnchorSerialize, AnchorDeserialize)]
 pub struct GenomicData {
     /// Encrypted genetic variant count
     pub variant_count: [u8; 32],
@@ -474,6 +478,7 @@ pub struct GenomicData {
 
 /// Lab test results and imaging data
 #[repr(C)]
+#[derive(Copy, Clone, Pod, Zeroable, AnchorSerialize, AnchorDeserialize)]
 pub struct LabTestData {
     /// Encrypted lab test count
     pub lab_test_count: [u8; 32],
@@ -497,6 +502,7 @@ pub struct LabTestData {
 /// genomic analysis, and lab test results.
 #[account(zero_copy)]
 #[repr(C)]
+#[derive(Copy, Clone, Pod, Zeroable)]
 pub struct PatientData {
     pub demographics: BasicDemographics,
     pub healthcare: HealthcareData,
