@@ -8,6 +8,7 @@ declare_id!("NEnkfYAYz9epwXkXChP3hz2y1L8wUgf2xkrUKAmfxBD");
 #[arcium_program]
 pub mod share_medical_records {
     use super::*;
+    use anchor_spl::token::{Mint, Token, TokenAccount};
 
     /// Stores encrypted patient medical data on-chain.
     ///
@@ -124,6 +125,82 @@ pub mod share_medical_records {
         Ok(())
     }
 
+    /// AMOCA Telemedicine: Role-gated share using a certificate NFT (SPL token with 0 decimals).
+    pub fn share_patient_data_with_role(
+        ctx: Context<SharePatientDataWithRole>,
+        computation_offset: u64,
+        receiver: [u8; 32],
+        receiver_nonce: u128,
+        sender_pub_key: [u8; 32],
+        nonce: u128,
+    ) -> Result<()> {
+        // Verify credential token account belongs to signer, matches mint, and holds at least 1 token
+        require_keys_eq!(ctx.accounts.credential_token_account.owner, ctx.accounts.payer.key(), ErrorCode::Unauthorized);
+        require_keys_eq!(ctx.accounts.credential_token_account.mint, ctx.accounts.credential_mint.key(), ErrorCode::Unauthorized);
+        require!(ctx.accounts.credential_mint.decimals == 0, ErrorCode::InvalidCredentialMint);
+        require!(ctx.accounts.credential_token_account.amount >= 1, ErrorCode::MissingCredential);
+
+        // Proceed with regular share
+        let args = vec![
+            Argument::ArcisPubkey(receiver),
+            Argument::PlaintextU128(receiver_nonce),
+            Argument::ArcisPubkey(sender_pub_key),
+            Argument::PlaintextU128(nonce),
+            Argument::Account(
+                ctx.accounts.patient_data.key(),
+                8,
+                core::mem::size_of::<PatientData>() as u32,
+            ),
+        ];
+
+        ctx.accounts.sign_pda_account.bump = ctx.bumps.sign_pda_account;
+
+        queue_computation(
+            ctx.accounts,
+            computation_offset,
+            args,
+            None,
+            vec![],
+        )?;
+        Ok(())
+    }
+
+    /// Convenience: doctor role (uses provided credential mint/token account)
+    pub fn share_patient_data_doctor(
+        ctx: Context<SharePatientDataWithRole>,
+        computation_offset: u64,
+        receiver: [u8; 32],
+        receiver_nonce: u128,
+        sender_pub_key: [u8; 32],
+        nonce: u128,
+    ) -> Result<()> {
+        share_patient_data_with_role(ctx, computation_offset, receiver, receiver_nonce, sender_pub_key, nonce)
+    }
+
+    /// Convenience: nurse role (uses provided credential mint/token account)
+    pub fn share_patient_data_nurse(
+        ctx: Context<SharePatientDataWithRole>,
+        computation_offset: u64,
+        receiver: [u8; 32],
+        receiver_nonce: u128,
+        sender_pub_key: [u8; 32],
+        nonce: u128,
+    ) -> Result<()> {
+        share_patient_data_with_role(ctx, computation_offset, receiver, receiver_nonce, sender_pub_key, nonce)
+    }
+
+    /// Convenience: pharmacist role (uses provided credential mint/token account)
+    pub fn share_patient_data_pharmacist(
+        ctx: Context<SharePatientDataWithRole>,
+        computation_offset: u64,
+        receiver: [u8; 32],
+        receiver_nonce: u128,
+        sender_pub_key: [u8; 32],
+        nonce: u128,
+    ) -> Result<()> {
+        share_patient_data_with_role(ctx, computation_offset, receiver, receiver_nonce, sender_pub_key, nonce)
+    }
+
     // Callback removed to minimize stack usage
 }
 
@@ -200,6 +277,75 @@ pub struct SharePatientData<'info> {
     pub system_program: Program<'info, System>,
     pub arcium_program: Program<'info, Arcium>,
     pub patient_data: AccountLoader<'info, PatientData>,
+}
+
+#[queue_computation_accounts("share_patient_data", payer)]
+#[derive(Accounts)]
+#[instruction(computation_offset: u64)]
+pub struct SharePatientDataWithRole<'info> {
+    #[account(mut)]
+    pub payer: Signer<'info>,
+    #[account(
+        init_if_needed,
+        space = 9,
+        payer = payer,
+        seeds = [&SIGN_PDA_SEED],
+        bump,
+        address = derive_sign_pda!(),
+    )]
+    pub sign_pda_account: Account<'info, SignerAccount>,
+    #[account(
+        address = derive_mxe_pda!()
+    )]
+    pub mxe_account: Account<'info, MXEAccount>,
+    #[account(
+        mut,
+        address = derive_mempool_pda!()
+    )]
+    /// CHECK: mempool_account, checked by the arcium program.
+    pub mempool_account: UncheckedAccount<'info>,
+    #[account(
+        mut,
+        address = derive_execpool_pda!()
+    )]
+    /// CHECK: executing_pool, checked by the arcium program.
+    pub executing_pool: UncheckedAccount<'info>,
+    #[account(
+        mut,
+        address = derive_comp_pda!(computation_offset)
+    )]
+    /// CHECK: computation_account, checked by the arcium program.
+    pub computation_account: UncheckedAccount<'info>,
+    #[account(
+        address = derive_comp_def_pda!(COMP_DEF_OFFSET_SHARE_PATIENT_DATA)
+    )]
+    pub comp_def_account: Account<'info, ComputationDefinitionAccount>,
+    #[account(
+        mut,
+        address = derive_cluster_pda!(mxe_account)
+    )]
+    pub cluster_account: Account<'info, Cluster>,
+    #[account(
+        mut,
+        address = ARCIUM_FEE_POOL_ACCOUNT_ADDRESS,
+    )]
+    pub pool_account: Account<'info, FeePool>,
+    #[account(
+        address = ARCIUM_CLOCK_ACCOUNT_ADDRESS,
+    )]
+    pub clock_account: Account<'info, ClockAccount>,
+    pub system_program: Program<'info, System>,
+    pub arcium_program: Program<'info, Arcium>,
+    pub patient_data: AccountLoader<'info, PatientData>,
+
+    // Credential NFT accounts
+    pub credential_mint: Account<'info, anchor_spl::token::Mint>,
+    #[account(
+        constraint = credential_token_account.owner == payer.key() @ ErrorCode::Unauthorized,
+        constraint = credential_token_account.mint == credential_mint.key() @ ErrorCode::Unauthorized,
+    )]
+    pub credential_token_account: Account<'info, anchor_spl::token::TokenAccount>,
+    pub token_program: Program<'info, anchor_spl::token::Token>,
 }
 
 // SharePatientDataCallback accounts removed
@@ -378,4 +524,10 @@ pub enum ErrorCode {
     InvalidImagingTypes,
     #[msg("Invalid imaging dates data format")]
     InvalidImagingDates,
+    #[msg("Caller lacks required credential NFT")]
+    MissingCredential,
+    #[msg("Invalid credential mint (must be 0 decimals)")]
+    InvalidCredentialMint,
+    #[msg("Unauthorized or mismatched credential account")]
+    Unauthorized,
 }

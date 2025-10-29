@@ -1,4 +1,4 @@
-# Share Medical Records
+# AMOCA Telemedicine: Confidential Medical Data Sharing
 
 ## The Problem: Privacy-Preserving Medical Data Sharing
 
@@ -10,9 +10,9 @@ Medical records contain highly sensitive personal information that needs to be s
 - **Access Control**: Fine-grained control over who can access specific medical data is essential
 - **Auditability**: All access and sharing events must be transparent and verifiable
 
-## The Solution: Arcium's MPC Network
+## The Solution: AMOCA Telemedicine on Arcium MPC
 
-This example demonstrates how Arcium's Multi-Party Computation (MPC) solution enables decentralized, trust-minimized confidential computing on Solana. The system allows medical records to be shared while keeping the data encrypted and ensuring no single party has access to the complete information.
+AMOCA Telemedicine leverages Arcium's Multi-Party Computation (MPC) to enable decentralized, trust-minimized confidential computing on Solana. The system allows medical records to be shared while keeping the data encrypted and ensuring no single party has access to the complete information.
 
 ### Key Features
 
@@ -46,7 +46,8 @@ This example demonstrates how Arcium's Multi-Party Computation (MPC) solution en
   - `init_share_patient_data_comp_def`: Initializes the confidential computation
   - `store_patient_data`: Stores encrypted patient data on-chain
   - `share_patient_data`: Initiates the confidential data sharing process
-  - `share_patient_data_callback`: Handles the computation result
+  - `share_patient_data_with_role`: Role-gated sharing using certificate NFT
+  - `share_patient_data_doctor` / `share_patient_data_nurse` / `share_patient_data_pharmacist`: Convenience wrappers for role-gated sharing
 
 ### Security Implementation
 
@@ -56,13 +57,23 @@ This example demonstrates how Arcium's Multi-Party Computation (MPC) solution en
 - Secure enclave environment for computation
 - Decentralized MPC nodes with no single point of failure
 
+### Role Credentials (Certificate NFT)
+
+AMOCA Telemedicine enforces professional access via certificate NFTs:
+
+- A credential NFT is a standard SPL Token (0 decimals) minted per role (doctor, nurse, pharmacist).
+- Callers must present a token account holding at least 1 unit of the credential mint to perform role-gated actions.
+- The program verifies: token account owner is the signer, token account mint equals the provided credential mint, amount ≥ 1, and mint has 0 decimals.
+
+Client apps may choose distinct mints per role. The role-specific convenience instructions are thin wrappers over the generic `share_patient_data_with_role` and are intended for UX clarity.
+
 ### Example Flow
 
 The test file (`share_medical_records.ts`) demonstrates:
 
 1. Computation definition initialization
 2. Encrypted patient data storage
-3. Secure data sharing with a receiver
+3. Secure data sharing with a receiver (optionally role-gated via credential NFT)
 4. Verification through on-chain events
 
 This example effectively showcases how Arcium's MPC solution enables:
