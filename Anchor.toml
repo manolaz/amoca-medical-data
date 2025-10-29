@@ -1,0 +1,112 @@
+[toolchain]
+package_manager = "yarn"
+
+[features]
+resolution = true
+skip-lint = false
+
+[programs.localnet]
+share_medical_records = "NEnkfYAYz9epwXkXChP3hz2y1L8wUgf2xkrUKAmfxBD"
+
+[registry]
+url = "https://api.apr.dev"
+
+[provider]
+cluster = "localnet"
+wallet = "~/.config/solana/id.json"
+
+[scripts]
+test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
+
+[test.validator]
+[[test.genesis]]
+address = "BKck65TgoKRokMjQM3datB9oRwJ8rAj2jxPXvHXUvcL6"
+program = "/Users/kate/amoca-dapp/amoca-medical-data/artifacts/arcium_program_0.3.0.so"
+
+[[test.validator.account]]
+address = "FHriyvoZotYiFnbUzKFjzRSb2NiaC8RPWY7jtKuKhg65"
+filename = "artifacts/arcium_clock.json"
+
+[[test.validator.account]]
+address = "7MGSS4iKNM4sVib7bDZDJhVqB6EcchPwVnTKenCY1jt3"
+filename = "artifacts/arcium_fee_pool.json"
+
+[[test.validator.account]]
+address = "BoVUVSJAhob2cvM5z4JZTdS6VWRSznh3bbzQD1TFjvDP"
+filename = "artifacts/arx_mint.json"
+
+[[test.validator.account]]
+address = "HPJqinsnuTFubySxd4kzmom7LpLZDMGd7weqjxvHkvAa"
+filename = "artifacts/wallet_acc_HPJq_kvAa.json"
+
+[[test.validator.account]]
+address = "DXWjRWGEBJmzUgBhhShQtS6ELb876aNNjSqsabkejdRd"
+filename = "artifacts/arx_ata_HPJq_kvAa.json"
+
+[[test.validator.account]]
+address = "C3majPG4riScV71a3uwtqmpDWojA4xt69nUoEUyDGHT2"
+filename = "artifacts/wallet_acc_C3ma_GHT2.json"
+
+[[test.validator.account]]
+address = "4YVdTUHdgk7pXMA8SRD7ZMMUCtxPbcaWPtAHDYQEK7AE"
+filename = "artifacts/wallet_acc_callback_4YVd_K7AE.json"
+
+[[test.validator.account]]
+address = "F5465xraw2wmMh1bbmGDegkKY3YmzcXd6PxTMP25zrDD"
+filename = "artifacts/arx_ata_C3ma_GHT2.json"
+
+[[test.validator.account]]
+address = "HX1jBjxpxJSEBKkM2Sv4RUkZXVdQJg3RLVCQxKGKGzGr"
+filename = "artifacts/operator_acc_C3ma_GHT2.json"
+
+[[test.validator.account]]
+address = "ELoRR19zrps1G3UYKcAxr7LKbw3kbqkVUXVY9dETMWN7"
+filename = "artifacts/arx_node_C3ma_GHT2.json"
+
+[[test.validator.account]]
+address = "hfXQB62xpFuQYqzQs9ZVJfpuESDTJK8kPvEPMmV5JQp"
+filename = "artifacts/wallet_acc_hfXQ_5JQp.json"
+
+[[test.validator.account]]
+address = "5GnTBUCMo1keJCTum45vbNk1tBXQP9r9xqguCsK5jx9r"
+filename = "artifacts/wallet_acc_callback_5GnT_jx9r.json"
+
+[[test.validator.account]]
+address = "78weG2oit49UfaKxAhzvhhCveVC7E3F5iG6m8zdMbSYt"
+filename = "artifacts/arx_ata_hfXQ_5JQp.json"
+
+[[test.validator.account]]
+address = "27iSMyufvpQR3jgZAJd7Azv8AeMQr4tEfQnS9VZRWyat"
+filename = "artifacts/operator_acc_hfXQ_5JQp.json"
+
+[[test.validator.account]]
+address = "XdfSwb8ZajhN7CerfBSJVhyfx5fyLtv34QVKSRgMFA9"
+filename = "artifacts/arx_node_hfXQ_5JQp.json"
+
+[[test.validator.account]]
+address = "GgSqqAyH7AVY3Umcv8NvncrjFaNJuQLmxzxFxPoPW2Yd"
+filename = "artifacts/cluster_acc_0.json"
+
+[[test.validator.account]]
+address = "DXenRqwqMPkiaUkcnJbUYrwVmtxopXPwcbvVFyCXdRmo"
+filename = "artifacts/share_patient_data_raw_circuit_0.json"
+
+[[test.validator.account]]
+address = "7DLe6paAeUnKQmBS8HUXHANaVbfshwjyc8RvVDzpimbk"
+filename = "artifacts/mxe_keygen_comp_def.json"
+
+[[test.validator.account]]
+address = "66vrsp1WaZJzdWj3tbu55GHAQRhuhhB3X2jzNnR6ue5C"
+filename = "artifacts/mxe_keygen_comp.json"
+
+[[test.validator.account]]
+address = "7nSRR1844LguKJUnh8CA6AKCwd5u7K1Lx4EhPdCeXK5y"
+filename = "artifacts/mxe_acc.json"
+
+[[test.validator.account]]
+address = "6arhNHzxWwvvwcpiueVtwCaTYt6AUQsyoYNLRGSMH1it"
+filename = "artifacts/mempool_acc.json"
+
+[[test.validator.account]]
+address = "3i3Qm2zDh4ntMvXjcT3aLSW8d7qfWK7qMAqmFkj5yvsX"
+filename = "artifacts/executing_pool_acc.json"
