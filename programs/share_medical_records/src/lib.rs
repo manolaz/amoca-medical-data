@@ -11,36 +11,64 @@ pub mod share_medical_records {
 
     /// Stores encrypted patient medical data on-chain.
     ///
-    /// This function stores patient medical information in encrypted form. All data fields
-    /// are provided as encrypted 32-byte arrays that can only be decrypted by authorized parties.
+    /// This function stores comprehensive patient medical information in encrypted form, including
+    /// basic demographics, advanced healthcare history, genomic analysis, and lab test results.
+    /// All data fields are provided as encrypted 32-byte arrays that can only be decrypted by authorized parties.
     /// The data remains confidential while being stored on the public Solana blockchain.
     ///
     /// # Arguments
-    /// * `patient_id` - Encrypted unique identifier for the patient
-    /// * `age` - Encrypted patient age
-    /// * `gender` - Encrypted patient gender information
-    /// * `blood_type` - Encrypted blood type information
-    /// * `weight` - Encrypted patient weight
-    /// * `height` - Encrypted patient height
-    /// * `allergies` - Array of encrypted allergy information (up to 5 entries)
+    /// Basic demographics: patient_id, age, gender, blood_type, weight, height, allergies
+    /// Advanced healthcare: medical_history, medication_count, medications, procedure_count, 
+    ///                      procedure_dates, family_history
+    /// Genomic analysis: variant_count, genetic_markers, variant_significance, carrier_status,
+    ///                   pharmacogenomic_markers, ancestry_components
+    /// Lab test results: lab_test_count, lab_test_types, lab_test_dates, lab_test_values,
+    ///                   lab_test_flags, imaging_count, imaging_types, imaging_dates
     pub fn store_patient_data(
         ctx: Context<StorePatientData>,
-        patient_id: [u8; 32],
-        age: [u8; 32],
-        gender: [u8; 32],
-        blood_type: [u8; 32],
-        weight: [u8; 32],
-        height: [u8; 32],
-        allergies: [[u8; 32]; 5],
+        ciphertexts: Vec<[u8; 32]>,
     ) -> Result<()> {
-        let patient_data = &mut ctx.accounts.patient_data;
-        patient_data.patient_id = patient_id;
-        patient_data.age = age;
-        patient_data.gender = gender;
-        patient_data.blood_type = blood_type;
-        patient_data.weight = weight;
-        patient_data.height = height;
-        patient_data.allergies = allergies;
+        // Expect 152 fields, indexed exactly as emitted in the callback
+        if ciphertexts.len() != 152 {
+            return Err(ErrorCode::InvalidInputLength.into());
+        }
+
+        let mut data = ctx.accounts.patient_data.load_init()?;
+
+        // Basic demographics
+        data.patient_id = ciphertexts[0];
+        data.age = ciphertexts[1];
+        data.gender = ciphertexts[2];
+        data.blood_type = ciphertexts[3];
+        data.weight = ciphertexts[4];
+        data.height = ciphertexts[5];
+        for i in 0..5 { data.allergies[i] = ciphertexts[6 + i]; }
+
+        // Advanced healthcare
+        for i in 0..10 { data.medical_history[i] = ciphertexts[11 + i]; }
+        data.medication_count = ciphertexts[21];
+        for i in 0..8 { data.medications[i] = ciphertexts[22 + i]; }
+        data.procedure_count = ciphertexts[30];
+        for i in 0..8 { data.procedure_dates[i] = ciphertexts[31 + i]; }
+        for i in 0..5 { data.family_history[i] = ciphertexts[39 + i]; }
+
+        // Genomic analysis
+        data.variant_count = ciphertexts[44];
+        for i in 0..15 { data.genetic_markers[i] = ciphertexts[45 + i]; }
+        for i in 0..15 { data.variant_significance[i] = ciphertexts[60 + i]; }
+        for i in 0..5 { data.carrier_status[i] = ciphertexts[75 + i]; }
+        for i in 0..3 { data.pharmacogenomic_markers[i] = ciphertexts[80 + i]; }
+        for i in 0..7 { data.ancestry_components[i] = ciphertexts[83 + i]; }
+
+        // Lab test results
+        data.lab_test_count = ciphertexts[90];
+        for i in 0..10 { data.lab_test_types[i] = ciphertexts[91 + i]; }
+        for i in 0..10 { data.lab_test_dates[i] = ciphertexts[101 + i]; }
+        for i in 0..10 { data.lab_test_values[i] = ciphertexts[111 + i]; }
+        for i in 0..10 { data.lab_test_flags[i] = ciphertexts[121 + i]; }
+        data.imaging_count = ciphertexts[131];
+        for i in 0..10 { data.imaging_types[i] = ciphertexts[132 + i]; }
+        for i in 0..10 { data.imaging_dates[i] = ciphertexts[142 + i]; }
 
         Ok(())
     }
@@ -80,7 +108,7 @@ pub mod share_medical_records {
             Argument::Account(
                 ctx.accounts.patient_data.key(),
                 8,
-                PatientData::INIT_SPACE as u32,
+                core::mem::size_of::<PatientData>() as u32,
             ),
         ];
 
@@ -91,40 +119,12 @@ pub mod share_medical_records {
             computation_offset,
             args,
             None,
-            vec![SharePatientDataCallback::callback_ix(&[])],
+            vec![],
         )?;
         Ok(())
     }
 
-    /// Handles the result of the patient data sharing MPC computation.
-    ///
-    /// This callback processes the re-encrypted patient data that has been prepared for
-    /// the specified receiver. It emits an event containing all the medical data fields
-    /// encrypted specifically for the receiver's public key.
-    #[arcium_callback(encrypted_ix = "share_patient_data")]
-    pub fn share_patient_data_callback(
-        ctx: Context<SharePatientDataCallback>,
-        output: ComputationOutputs<SharePatientDataOutput>,
-    ) -> Result<()> {
-        let o = match output {
-            ComputationOutputs::Success(SharePatientDataOutput { field_0 }) => field_0,
-            _ => return Err(ErrorCode::AbortedComputation.into()),
-        };
-
-        emit!(ReceivedPatientDataEvent {
-            nonce: o.nonce.to_le_bytes(),
-            patient_id: o.ciphertexts[0],
-            age: o.ciphertexts[1],
-            gender: o.ciphertexts[2],
-            blood_type: o.ciphertexts[3],
-            weight: o.ciphertexts[4],
-            height: o.ciphertexts[5],
-            allergies: o.ciphertexts[6..11]
-                .try_into()
-                .map_err(|_| ErrorCode::InvalidAllergyData)?,
-        });
-        Ok(())
-    }
+    // Callback removed to minimize stack usage
 }
 
 #[derive(Accounts)]
@@ -135,11 +135,11 @@ pub struct StorePatientData<'info> {
     #[account(
         init,
         payer = payer,
-        space = 8 + PatientData::INIT_SPACE,
+        space = 8 + core::mem::size_of::<PatientData>(),
         seeds = [b"patient_data", payer.key().as_ref()],
         bump,
     )]
-    pub patient_data: Account<'info, PatientData>,
+    pub patient_data: AccountLoader<'info, PatientData>,
 }
 
 #[queue_computation_accounts("share_patient_data", payer)]
@@ -199,21 +199,10 @@ pub struct SharePatientData<'info> {
     pub clock_account: Account<'info, ClockAccount>,
     pub system_program: Program<'info, System>,
     pub arcium_program: Program<'info, Arcium>,
-    pub patient_data: Account<'info, PatientData>,
+    pub patient_data: AccountLoader<'info, PatientData>,
 }
 
-#[callback_accounts("share_patient_data")]
-#[derive(Accounts)]
-pub struct SharePatientDataCallback<'info> {
-    pub arcium_program: Program<'info, Arcium>,
-    #[account(
-        address = derive_comp_def_pda!(COMP_DEF_OFFSET_SHARE_PATIENT_DATA)
-    )]
-    pub comp_def_account: Account<'info, ComputationDefinitionAccount>,
-    #[account(address = ::anchor_lang::solana_program::sysvar::instructions::ID)]
-    /// CHECK: instructions_sysvar, checked by the account constraint
-    pub instructions_sysvar: AccountInfo<'info>,
-}
+// SharePatientDataCallback accounts removed
 
 #[init_computation_definition_accounts("share_patient_data", payer)]
 #[derive(Accounts)]
@@ -233,8 +222,9 @@ pub struct InitSharePatientDataCompDef<'info> {
     pub system_program: Program<'info, System>,
 }
 
+/// Basic patient demographics data event
 #[event]
-pub struct ReceivedPatientDataEvent {
+pub struct ReceivedBasicPatientDataEvent {
     pub nonce: [u8; 16],
     pub patient_id: [u8; 32],
     pub age: [u8; 32],
@@ -245,10 +235,50 @@ pub struct ReceivedPatientDataEvent {
     pub allergies: [[u8; 32]; 5],
 }
 
-/// Stores encrypted patient medical information.
-#[account]
-#[derive(InitSpace)]
+/// Advanced healthcare data event (medical history, medications, procedures, family history)
+#[event]
+pub struct ReceivedHealthcareDataEvent {
+    pub nonce: [u8; 16],
+    pub medical_history: [[u8; 32]; 10],
+    pub medication_count: [u8; 32],
+    pub medications: [[u8; 32]; 8],
+    pub procedure_count: [u8; 32],
+    pub procedure_dates: [[u8; 32]; 8],
+    pub family_history: [[u8; 32]; 5],
+}
+
+/// Genomic analysis data event (genetic variants, markers, carrier status, ancestry)
+#[event]
+pub struct ReceivedGenomicDataEvent {
+    pub nonce: [u8; 16],
+    pub variant_count: [u8; 32],
+    pub genetic_markers: [[u8; 32]; 15],
+    pub variant_significance: [[u8; 32]; 15],
+    pub carrier_status: [[u8; 32]; 5],
+    pub pharmacogenomic_markers: [[u8; 32]; 3],
+    pub ancestry_components: [[u8; 32]; 7],
+}
+
+/// Lab test results and imaging data event
+#[event]
+pub struct ReceivedLabTestDataEvent {
+    pub nonce: [u8; 16],
+    pub lab_test_count: [u8; 32],
+    pub lab_test_types: [[u8; 32]; 10],
+    pub lab_test_dates: [[u8; 32]; 10],
+    pub lab_test_values: [[u8; 32]; 10],
+    pub lab_test_flags: [[u8; 32]; 10],
+    pub imaging_count: [u8; 32],
+    pub imaging_types: [[u8; 32]; 10],
+    pub imaging_dates: [[u8; 32]; 10],
+}
+
+/// Stores encrypted patient medical information including advanced healthcare,
+/// genomic analysis, and lab test results.
+#[account(zero_copy)]
+#[repr(C)]
 pub struct PatientData {
+    // Basic demographics
     /// Encrypted unique patient identifier
     pub patient_id: [u8; 32],
     /// Encrypted patient age
@@ -263,14 +293,89 @@ pub struct PatientData {
     pub height: [u8; 32],
     /// Array of encrypted allergy information (up to 5 allergies)
     pub allergies: [[u8; 32]; 5],
+    // Advanced healthcare
+    /// Encrypted medical history flags (diabetes, hypertension, heart_disease, cancer, stroke, asthma, copd, arthritis, osteoporosis, depression)
+    pub medical_history: [[u8; 32]; 10],
+    /// Encrypted medication count
+    pub medication_count: [u8; 32],
+    /// Array of encrypted medication IDs (up to 8 medications)
+    pub medications: [[u8; 32]; 8],
+    /// Encrypted procedure count
+    pub procedure_count: [u8; 32],
+    /// Array of encrypted procedure dates (days since epoch, up to 8 procedures)
+    pub procedure_dates: [[u8; 32]; 8],
+    /// Encrypted family history flags (diabetes, heart_disease, cancer, stroke, hypertension)
+    pub family_history: [[u8; 32]; 5],
+    // Genomic analysis
+    /// Encrypted genetic variant count
+    pub variant_count: [u8; 32],
+    /// Array of encrypted genetic marker identifiers (up to 15 variants)
+    pub genetic_markers: [[u8; 32]; 15],
+    /// Array of encrypted variant significance scores (up to 15)
+    pub variant_significance: [[u8; 32]; 15],
+    /// Encrypted carrier status flags (cystic_fibrosis, sickle_cell, tay_sachs, hemophilia, huntington)
+    pub carrier_status: [[u8; 32]; 5],
+    /// Encrypted pharmacogenomic markers (warfarin_sensitivity, clopidogrel_resistance, statin_response)
+    pub pharmacogenomic_markers: [[u8; 32]; 3],
+    /// Array of encrypted ancestry component percentages (up to 7 populations)
+    pub ancestry_components: [[u8; 32]; 7],
+    // Lab test results
+    /// Encrypted lab test count
+    pub lab_test_count: [u8; 32],
+    /// Array of encrypted lab test type identifiers (up to 10 tests)
+    pub lab_test_types: [[u8; 32]; 10],
+    /// Array of encrypted lab test dates (days since epoch, up to 10 tests)
+    pub lab_test_dates: [[u8; 32]; 10],
+    /// Array of encrypted lab test values (normalized, up to 10 tests)
+    pub lab_test_values: [[u8; 32]; 10],
+    /// Array of encrypted lab test normal range flags (0=low, 1=normal, 2=high, up to 10 tests)
+    pub lab_test_flags: [[u8; 32]; 10],
+    /// Encrypted imaging count
+    pub imaging_count: [u8; 32],
+    /// Array of encrypted imaging type identifiers (up to 10 imaging studies)
+    pub imaging_types: [[u8; 32]; 10],
+    /// Array of encrypted imaging dates (days since epoch, up to 10)
+    pub imaging_dates: [[u8; 32]; 10],
 }
 
 #[error_code]
 pub enum ErrorCode {
     #[msg("The computation was aborted")]
     AbortedComputation,
+    #[msg("Invalid ciphertexts length")]
+    InvalidInputLength,
     #[msg("Invalid allergy data format")]
     InvalidAllergyData,
     #[msg("Cluster not set")]
     ClusterNotSet,
+    #[msg("Invalid medical history data format")]
+    InvalidMedicalHistory,
+    #[msg("Invalid medications data format")]
+    InvalidMedications,
+    #[msg("Invalid procedure dates data format")]
+    InvalidProcedureDates,
+    #[msg("Invalid family history data format")]
+    InvalidFamilyHistory,
+    #[msg("Invalid genetic markers data format")]
+    InvalidGeneticMarkers,
+    #[msg("Invalid variant significance data format")]
+    InvalidVariantSignificance,
+    #[msg("Invalid carrier status data format")]
+    InvalidCarrierStatus,
+    #[msg("Invalid pharmacogenomic markers data format")]
+    InvalidPharmacogenomicMarkers,
+    #[msg("Invalid ancestry components data format")]
+    InvalidAncestryComponents,
+    #[msg("Invalid lab test types data format")]
+    InvalidLabTestTypes,
+    #[msg("Invalid lab test dates data format")]
+    InvalidLabTestDates,
+    #[msg("Invalid lab test values data format")]
+    InvalidLabTestValues,
+    #[msg("Invalid lab test flags data format")]
+    InvalidLabTestFlags,
+    #[msg("Invalid imaging types data format")]
+    InvalidImagingTypes,
+    #[msg("Invalid imaging dates data format")]
+    InvalidImagingDates,
 }

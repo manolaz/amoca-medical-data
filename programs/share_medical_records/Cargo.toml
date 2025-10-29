@@ -22,3 +22,4 @@ anchor-lang = { version = "0.31.1", features = ["init-if-needed"] }
 arcium-client = { version = "0.3.0", default-features = false }
 arcium-macros = { version = "0.3.0" }
 arcium-anchor = { version = "0.3.0" }
+bytemuck = { version = "1.15", features = ["derive"] }

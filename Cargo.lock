@@ -1712,6 +1712,7 @@ dependencies = [
  "arcium-anchor",
  "arcium-client",
  "arcium-macros",
+ "bytemuck",
 ]
 
 [[package]]
