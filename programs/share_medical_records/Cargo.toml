@@ -9,7 +9,7 @@ crate-type = ["cdylib", "lib"]
 name = "share_medical_records"
 
 [features]
-default = ["idl-build"]
+default = []
 cpi = ["no-entrypoint"]
 no-entrypoint = []
 no-idl = []
